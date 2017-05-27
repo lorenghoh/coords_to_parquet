@@ -1,7 +1,10 @@
-import h5py, glob, dask
+import glob, h5py
 
-import xarray as xr
+import dask.array as da
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+import numpy as np
 
 keys = {
         "condensed": 0,
@@ -15,19 +18,31 @@ keys = {
         "plume": 8,
         }
 
-timestep=re.compile('.*_(\d+)\.h5')
-# the_file=glob.glob('*h5')[0]
-the_file='/newtera/loh/data/BOMEX/tracking/clouds_00000057.h5'
-the_time=timestep.match(the_file).group(1)
-the_time=int(the_time)
-print(the_time)
-keep_recs=[]
-with h5py.File(the_file) as h5file:
-    for cloud_id in h5file.keys():
-        for the_type in h5file[cloud_id]:
-            type_num=keys[the_type]
-            for coord in h5file[cloud_id][the_type]:
-                keep_recs.append((int(cloud_id),type_num,the_time,coord))
-df=pd.DataFrame.from_records(keep_recs,columns=['cloud_id','type','time_step','coord'])
-table = pa.Table.from_pandas(df)
-pq.write_table(table, 'clouds_00000057.pq')
+def write_parquet():
+    _i = int
+
+    def append_items(type, obj):
+        for index in obj:
+            cid = _i(obj.name.split('/')[1])
+
+            rec['cid'].append(cid)
+            rec['type'].append(keys[type])
+            rec['index'].append(index)
+
+    rec = {'cid': [], 'type': [], 'index': [],}
+    filelist = sorted(glob.glob('/newtera/loh/data/BOMEX/tracking/clouds_*.h5'))
+    for time, file in enumerate(filelist):
+        with h5py.File(file) as h5_file:
+            for cid in h5_file.keys():
+                if _i(cid) == -1: continue # Ignore noise
+                h5_file[cid].visititems(append_items)
+                break
+        break
+
+    ind = [rec['cid'], rec['type']]
+    df = pd.DataFrame(rec['index'], index=ind, columns=['index'])
+    print(df)
+    pq.write_table(pa.Table.from_pandas(df), 'clouds.pq')
+
+if __name__ == '__main__':
+    write_parquet()
