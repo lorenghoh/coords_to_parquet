@@ -1,22 +1,35 @@
-import pyarrow as pa
-import pyarrow.parquet as pq
+import glob, json
+
 import numpy as np
-import pdir
+import numba as nb
+import pandas as pd
+import dask.dataframe as dd
+import pyarrow.parquet as pq
 
-def index_to_zyx(index, nz, ny, nx):
-    z = np.floor_divide(index, (ny * nx))
-    xy = np.mod(index, (ny * nx))
-    y = np.floor_divide(xy, nx)
-    x = np.mod(xy, nx)
-    return (z, y, x)
+from get_model_config import get_model_config
 
-the_file='/home/phil/repos/pdf_to_mean_field/clouds_00000057.pq'
-parquet_file=pq.ParquetFile(the_file)
-print(parquet_file.metadata)
-print(parquet_file.schema)
-the_table=parquet_file.read_row_group(0)
-print(pdir(the_table))
-index_vals=the_table.column(3).to_pandas().to_xarray()
-#
-#  add x, y, z columns to pq file
-#
+case_name, model_config = get_model_config('BOMEX')
+
+nz = model_config['config']['nz']
+ny = model_config['config']['ny']
+nx = model_config['config']['nx']
+
+# @nb.jit(nopython=True)
+def index_to_zyx(index):
+    z = index // (ny * nx)
+    xy = index % (ny * nx)
+    y = xy // nx
+    x = xy % nx
+    return pd.DataFrame({'z':z, 'y':y, 'x':x})
+
+def read_parquet():
+    # cols = ['cid', 'type', 'coord']
+    cols = ['cloud_id', 'type', 'coord']
+    input_file = '/scratchSSD/phil/tracking/clouds_00000057.pq'
+    df = dd.read_parquet(input_file, columns=cols)
+    df = df.merge(df.coord.map_partitions(index_to_zyx))
+
+    print(df.compute())
+
+if __name__ == '__main__':
+    read_parquet()

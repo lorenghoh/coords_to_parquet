@@ -1,6 +1,7 @@
 import glob, h5py
 
-import dask.array as da
+import dask.dataframe as dd
+
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -23,25 +24,20 @@ def write_parquet():
 
     def append_items(type, obj):
         for index in obj:
-            cid = _i(obj.name.split('/')[1])
-
-            rec['cid'].append(cid)
+            rec['cid'].append(_i(obj.name.split('/')[1]))
             rec['type'].append(keys[type])
-            rec['index'].append(index)
+            rec['coord'].append(index)
 
-    rec = {'cid': [], 'type': [], 'index': [],}
+    rec = {'cid': [], 'type': [], 'coord': []}
     filelist = sorted(glob.glob('/newtera/loh/data/BOMEX/tracking/clouds_*.h5'))
     for time, file in enumerate(filelist):
         with h5py.File(file) as h5_file:
             for cid in h5_file.keys():
                 if _i(cid) == -1: continue # Ignore noise
                 h5_file[cid].visititems(append_items)
-                break
         break
 
-    ind = [rec['cid'], rec['type']]
-    df = pd.DataFrame(rec['index'], index=ind, columns=['index'])
-    print(df)
+    df = pd.DataFrame.from_dict(rec)
     pq.write_table(pa.Table.from_pandas(df), 'clouds.pq')
 
 if __name__ == '__main__':
