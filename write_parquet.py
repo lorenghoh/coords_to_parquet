@@ -38,7 +38,7 @@ def write_parquet():
         break
 
     df = pd.DataFrame.from_dict(rec)
-    pq.write_table(pa.Table.from_pandas(df), 'clouds.pq')
+    # pq.write_table(pa.Table.from_pandas(df), 'clouds.pq')
 
 if __name__ == '__main__':
     write_parquet()
