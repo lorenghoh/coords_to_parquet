@@ -1,4 +1,4 @@
-import glob, json
+import glob, json, dask
 
 import numpy as np
 import numba as nb
@@ -26,7 +26,7 @@ def read_parquet():
     # cols = ['cid', 'type', 'coord']
     cols = ['cloud_id', 'type', 'coord']
     input_file = '/scratchSSD/phil/tracking/clouds_00000057.pq'
-    df = dd.read_parquet(input_file, columns=cols)
+    df = dd.read_parquet(input_file, index='cloud_id', columns=cols, engine='arrow')
     df = df.merge(df.coord.map_partitions(index_to_zyx))
 
     print(df.compute())
