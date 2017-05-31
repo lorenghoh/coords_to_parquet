@@ -28,7 +28,7 @@ def main():
         t_list = count_dict[cloud_id]
         o_dict[cloud_id] = t_list
         print(cloud_id, '%d' % len(count_dict[cloud_id]), 
-              'from %d to %d' % (t_list[0], t_list[-1]))
+              'from %3d to %3d' % (t_list[0], t_list[-1]))
 
     with open('unique_clouds.json', 'w') as out_f:
         ujson.dump(o_dict, out_f, sort_keys=True, indent=4)

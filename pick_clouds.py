@@ -1,4 +1,4 @@
-import glob, json, dask
+import os, glob, ujson
 
 import numpy as np
 import numba as nb
@@ -22,46 +22,42 @@ def index_to_zyx(index):
     x = xy % nx
     return pd.DataFrame({'z':z, 'y':y, 'x':x})
 
-def find_longest_lived_clouds():
-    cols = ['cloud_id', 'type']
-    pq_list = sorted(glob.glob('/scratchSSD/phil/tracking/clouds_*.pq'))
-
-    df_lifetime = pd.DataFrame(0, index=[], columns=['tau'])
-    for time, pq_file in enumerate(pq_list):
-        df = dd.read_parquet(pq_file, index=None, columns=cols)
-
-        uids = np.unique(df.cloud_id)
-        for uid in uids:
-            try:
-                df_lifetime.loc[uid] += 1
-            except:
-                df_lifetime.loc[uid] = 1
-
-    print(df_lifetime.sort_values('tau', ascending=False).head(n=15))
+def create_output_dir(o_path):
+    try:
+        os.makedirs(o_path, exist_ok=True)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
 
 def pick_clouds():
-    # cids = np.array([21026, 18295, 21270, 20998, 20542])
-    cid = 21026 # The longest-living cloud in BOMEX
     cols = ['cloud_id', 'type', 'coord']
     pq_list = sorted(glob.glob('/scratchSSD/phil/tracking/clouds_*.pq'))
     out_path = '/scratchSSD/loh/tracking/'
 
-    for time, pq_file in enumerate(pq_list):
-        if time < 144: continue
-        df = dd.read_parquet(pq_file, index=None, columns=cols) 
+    c_dict = ujson.load(open('unique_clouds.json'))
+    for cid in c_dict:
+        print('Writing Parquet files for cid:', cid)
         
-        if cid in df.cloud_id.compute():
-            rec = (df.coord.loc[df.cloud_id == cid].map_partitions(index_to_zyx))
-            rec = df.loc[df.cloud_id == cid].merge(rec)
+        # Ensure output directory exists
+        create_output_dir('/scratchSSD/loh/tracking/%s' % cid)
+
+        start_t = c_dict[cid][0]
+        final_t = c_dict[cid][-1] + 1
+
+        for time in c_dict[cid]:
+            pq_file = pq_list[time]
+
+            df = dd.read_parquet(pq_file, index=None, columns=cols)
+            if len(df.loc[df.cloud_id == int(cid)]) < 1: continue
+
+            rec = (df.coord.loc[df.cloud_id == int(cid)].map_partitions(index_to_zyx))
+            rec = df.loc[df.cloud_id == int(cid)].merge(rec)
 
             try:
                 tab = pa.Table.from_pandas(rec.compute())
-                pq.write_table(tab, '/scratchSSD/loh/tracking/clouds_%08d.pq' % time)
+                pq.write_table(tab, '/scratchSSD/loh/tracking/%s/clouds_%08d.pq' % (cid, time))
             except:
                 pass
-        else:
-            print('cid not found at timestep:', time)
-
 
 if __name__ == '__main__':
     # find_longest_lived_clouds()
