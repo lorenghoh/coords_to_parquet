@@ -47,13 +47,18 @@ def pick_clouds():
     out_path = '/scratchSSD/loh/tracking/'
 
     for time, pq_file in enumerate(pq_list):
-        if time < 140: continue
+        if time < 144: continue
         df = dd.read_parquet(pq_file, index=None, columns=cols) 
         
         if cid in df.cloud_id.compute():
             rec = (df.coord.loc[df.cloud_id == cid].map_partitions(index_to_zyx))
-            tab = pa.Table.from_pandas(rec.compute())
-            pq.write_table(tab, '/scratchSSD/loh/tracking/clouds_%08d.pq' % time)
+            rec = df.loc[df.cloud_id == cid].merge(rec)
+
+            try:
+                tab = pa.Table.from_pandas(rec.compute())
+                pq.write_table(tab, '/scratchSSD/loh/tracking/clouds_%08d.pq' % time)
+            except:
+                pass
         else:
             print('cid not found at timestep:', time)
 
