@@ -36,24 +36,23 @@ def main():
 
     x_axis, y_axis = arr.shape
     if (np.max(x) - np.min(x)) > x_axis // 2:
-        
         # Shift target array
         x_off = x_axis - np.min(x[(x > x_axis // 2)])
         arr_r = np.roll(arr, x_off, axis=1)
 
         # Shift x-coordinates
         x_r = x + x_off
-        x_r[x_r > x_axis - 1] = x_r[x_r > x_axis - 1] - x_axis - 1
+        x_r[x_r >= x_axis] = x_r[x_r >= x_axis] - x_axis
     if (np.max(y) - np.min(y)) > y_axis // 2:
         # Shift target array
         y_off = y_axis - np.min(y[(y > y_axis // 2)])
         arr_r = np.roll(arr, y_off, axis=0)
         
         # Shift y-coordinates
-        y_r = y + y_off
-        y_r[y_r > y_axis - 1] = y_r[y_r > y_axis - 1] - y_axis - 1
+        y_r = y + y_off 
+        y_r[y_r >= y_axis] = y_r[y_r >= y_axis] - y_axis
 
-    print(arr_r)
+    print('\n', arr_r)
 
 if __name__ == '__main__':
     main()
