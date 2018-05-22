@@ -28,17 +28,20 @@ def write_parquet():
             rec['type'].append(keys[type])
             rec['coord'].append(index)
 
-    rec = {'cid': [], 'type': [], 'coord': []}
-    filelist = sorted(glob.glob('/newtera/loh/data/BOMEX/tracking/clouds_*.h5'))
+    loc = '/newtera/loh/workspace/loh_tracker/hdf5'
+    filelist = sorted(glob.glob(f'{loc}/clouds_*.h5'))
     for time, file in enumerate(filelist):
-        with h5py.File(file, driver='core', libver='latest') as h5_file:
+        rec = {'cid': [], 'type': [], 'coord': []}
+
+        with h5py.File(file, 'r', libver='latest') as h5_file:
             for cid in h5_file.keys():
                 if _i(cid) == -1: continue # Ignore noise
                 h5_file[cid].visititems(append_items)
-        break
 
-    df = pd.DataFrame.from_dict(rec)
-    pq.write_table(pa.Table.from_pandas(df), 'clouds.pq', compression='snappy')
+        df = pd.DataFrame.from_dict(rec)
+        pq.write_table(pa.Table.from_pandas(df), 
+                       f'tracking/clouds_{time:08d}.pq',
+                       use_dictionary=True)
 
 if __name__ == '__main__':
     write_parquet()
