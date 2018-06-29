@@ -1,4 +1,4 @@
-import glob, h5py
+import glob, h5py, ujson
 
 import dask.dataframe as dd
 
@@ -20,6 +20,9 @@ keys = {
         "plume": 8,
         }
 
+with open('config.json') as json_dict:
+    dirs = ujson.load(json_dict)
+
 _i = int
 def write_parquet(time, file):
     rec = {'cid': [], 'type': [], 'coord': []}
@@ -36,13 +39,13 @@ def write_parquet(time, file):
             h5_file[cid].visititems(append_items)
 
     df = pd.DataFrame.from_dict(rec)
-    loc = '/scratchSSD/loh/tracking/CGILS_301K'
+    loc = dirs['output_dir']
     pq.write_table(pa.Table.from_pandas(df), 
                    f'{loc}/clouds_{time:08d}.pq',
                    use_dictionary=True)
 
 if __name__ == '__main__':
-    loc = '/newtera/loh/workspace/loh_tracker/hdf5'
+    loc = dirs['input_dir']
     filelist = sorted(glob.glob(f'{loc}/clouds_*.h5'))
 
     Parallel(n_jobs=16)(delayed(write_parquet)(time, file) 
