@@ -26,7 +26,7 @@ def write_parquet_lf(time, item):
         rec = []
         for key in keys:
             for coord in list(item[key][...]):
-                rec.append((cid, key, coord))
+                rec.append((cid, keys[key], coord))
         return rec
 
     with h5py.File(item, 'r', driver='core') as h5_file:
