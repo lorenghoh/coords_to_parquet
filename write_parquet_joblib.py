@@ -33,7 +33,7 @@ def write_parquet(time, file):
             rec['type'].append(keys[type])
             rec['coord'].append(index)
 
-    with h5py.File(file, 'r', libver='latest') as h5_file:
+    with h5py.File(file, 'r', driver='core', libver='latest') as h5_file:
         for cid in h5_file.keys():
             if _i(cid) == -1: continue # Ignore noise
             h5_file[cid].visititems(append_items)
@@ -48,5 +48,5 @@ if __name__ == '__main__':
     loc = dirs['input_dir']
     filelist = sorted(glob.glob(f'{loc}/clouds_*.h5'))
 
-    Parallel(n_jobs=16)(delayed(write_parquet)(time, file) 
+    Parallel(n_jobs=32)(delayed(write_parquet)(time, file) 
                         for time, file in enumerate(filelist))
